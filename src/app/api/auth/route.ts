@@ -1,3 +1,4 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
@@ -19,7 +20,7 @@ export async function POST(request: NextRequest) {
       console.log('✅ Valid credentials');
       
       // Set authentication cookie with environment-based secret
-      const cookieStore = cookies();
+      const cookieStore = await cookies();
       const authToken = process.env.AUTH_TOKEN || 'fallback-secret';
       
       cookieStore.set('invoice-auth', `authenticated-${authToken}`, {
