@@ -5,14 +5,16 @@ import { useState, useEffect } from 'react';
 export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [status, setStatus] = useState('');
+  const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Check if already logged in
+  // Check if already authenticated
   useEffect(() => {
-    // Check if there's already an auth cookie
-    if (document.cookie.includes('invoice-auth=authenticated')) {
-      setStatus('Already logged in, redirecting...');
+    const authCookie = document.cookie
+      .split('; ')
+      .find(row => row.startsWith('invoice-auth='));
+    
+    if (authCookie && authCookie.includes('authenticated')) {
       window.location.href = '/';
     }
   }, []);
@@ -20,120 +22,111 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setStatus('Logging in...');
+    setError('');
 
     try {
-      console.log('=== LOGIN ATTEMPT ===');
-      console.log('Username:', username);
-      console.log('Password length:', password.length);
-
       const response = await fetch('/api/auth', {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-        },
-        credentials: 'same-origin', // Important for cookies
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ username, password }),
       });
 
-      console.log('Response status:', response.status);
-      const data = await response.json();
-      console.log('Response data:', data);
-
       if (response.ok) {
-        setStatus('✅ Success! Redirecting...');
-        console.log('✅ Login successful');
-        
-        // Wait a moment for cookie to be set, then redirect
+        console.log('✅ Login successful, redirecting...');
+        // Small delay to ensure cookie is set
         setTimeout(() => {
-          console.log('🔄 Redirecting to home page');
-          // Use window.location.replace to avoid back button issues
-          window.location.replace('/');
-        }, 1500);
+          window.location.href = '/';
+        }, 1000);
       } else {
-        setStatus(`❌ Error: ${data.error}`);
+        const data = await response.json();
+        setError(data.error || 'Login failed');
       }
     } catch (error) {
       console.error('Login error:', error);
-      setStatus(`❌ Network error: ${error}`);
+      setError('Network error. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const autoFill = () => {
+  const autoFillCredentials = () => {
     setUsername('admin');
     setPassword('MandarinDecor2025');
-    setStatus('Credentials auto-filled');
-  };
-
-  const checkCookies = () => {
-    const cookies = document.cookie;
-    console.log('Current cookies:', cookies);
-    setStatus(`Cookies: ${cookies}`);
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-      <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full">
-        <h1 className="text-2xl font-bold mb-6 text-center">Invoice Login</h1>
-        
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Username</label>
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="w-full p-3 border rounded-lg"
-              required
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium mb-1">Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-3 border rounded-lg"
-              required
-            />
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+      <div className="max-w-md w-full">
+        <div className="bg-white rounded-xl shadow-lg p-8">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h1>
+            <p className="text-gray-600">Sign in to access Invoice Generator</p>
           </div>
 
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 disabled:opacity-50"
-          >
-            {isLoading ? 'Logging in...' : 'Login'}
-          </button>
-        </form>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
+                Username
+              </label>
+              <input
+                id="username"
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                placeholder="Enter your username"
+              />
+            </div>
 
-        <div className="flex gap-2 mt-4">
-          <button
-            onClick={autoFill}
-            className="flex-1 bg-gray-600 text-white p-2 rounded-lg hover:bg-gray-700 text-sm"
-          >
-            Auto-fill Credentials
-          </button>
-          <button
-            onClick={checkCookies}
-            className="flex-1 bg-purple-600 text-white p-2 rounded-lg hover:bg-purple-700 text-sm"
-          >
-            Check Cookies
-          </button>
-        </div>
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                Password
+              </label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                placeholder="Enter your password"
+              />
+            </div>
 
-        {status && (
-          <div className="mt-4 p-3 bg-gray-100 rounded-lg">
-            <strong>Status:</strong> {status}
+            {error && (
+              <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm">
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition font-medium"
+            >
+              {isLoading ? 'Signing in...' : 'Sign In'}
+            </button>
+          </form>
+
+          <button
+            onClick={autoFillCredentials}
+            className="w-full mt-4 bg-gray-600 text-white py-2 px-4 rounded-lg hover:bg-gray-700 transition"
+          >
+            Auto-fill Demo Credentials
+          </button>
+
+          <div className="mt-8 p-4 bg-gray-50 rounded-lg">
+            <h3 className="font-medium text-gray-900 mb-2">Login Credentials</h3>
+            <p className="text-sm text-gray-600">
+              <strong>Username:</strong> admin<br />
+              <strong>Password:</strong> MandarinDecor2025
+            </p>
+            <p className="text-xs text-gray-500 mt-2">
+              (Uses INVOICE_PASSWORD environment variable in production)
+            </p>
           </div>
-        )}
-
-        <div className="mt-6 text-sm text-gray-600 text-center">
-          <p><strong>Username:</strong> admin</p>
-          <p><strong>Password:</strong> MandarinDecor2025</p>
         </div>
       </div>
     </div>
