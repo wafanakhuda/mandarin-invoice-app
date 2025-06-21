@@ -786,7 +786,7 @@ export default function InvoiceGenerator() {
         <div class="header">
             <div class="company-section">
                 <div class="logo-section">
-                    <img src="/assets/logo.png" alt="Company Logo" class="logo-image" 
+                    <img src="/assets/logo.PNG" alt="Company Logo" class="logo-image" 
                          onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                     <div class="logo-fallback" style="display: none;">MS</div>
                 </div>
