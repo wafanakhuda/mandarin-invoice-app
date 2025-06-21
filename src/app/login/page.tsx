@@ -102,13 +102,13 @@ export default function LoginPage() {
         </form>
 
         <div className="space-y-2 mt-4">
-          <button
+{/*           <button
             onClick={handleAutoFill}
             className="w-full bg-green-600 text-white p-2 rounded hover:bg-green-700"
           >
             Fill: admin / MandarinDecor2025
           </button>
-          
+           */}
           <button
             onClick={checkStorage}
             className="w-full bg-purple-600 text-white p-2 rounded hover:bg-purple-700"
@@ -123,10 +123,10 @@ export default function LoginPage() {
           </div>
         )}
 
-        <div className="mt-6 text-center text-sm text-gray-600">
+{/*         <div className="mt-6 text-center text-sm text-gray-600">
           <p><strong>Username:</strong> admin</p>
           <p><strong>Password:</strong> MandarinDecor2025</p>
-        </div>
+        </div> */}
       </div>
     </div>
   );
