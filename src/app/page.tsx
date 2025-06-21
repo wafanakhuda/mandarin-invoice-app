@@ -73,7 +73,7 @@ export default function InvoiceGenerator() {
       city: 'Hoysala Nagar, Indiranagar, Bengaluru',
       state: 'Karnataka 560038',
       country: 'India',
-      phone: '897-153-6537',
+      phone: '+91 8971536537',
       signatory: 'Sibgatulla khalife'
     },
     items: [{ description: '', quantity: 1, unit: 'nos', rate: 0, amount: 0 }],
@@ -216,7 +216,7 @@ export default function InvoiceGenerator() {
         city: 'Hoysala Nagar, Indiranagar, Bengaluru',
         state: 'Karnataka 560038',
         country: 'India',
-        phone: '897-153-6537',
+        phone: '+91 8971536537',
         signatory: 'Sibgatulla khalife'
       },
       items: [{ description: '', quantity: 1, unit: 'nos', rate: 0, amount: 0 }],
@@ -797,6 +797,7 @@ export default function InvoiceGenerator() {
                         ${invoice.billFrom.address}<br>
                         ${invoice.billFrom.city}, ${invoice.billFrom.state}<br>
                         ${invoice.billFrom.country}
+                        ${invoice.billFrom.phone}
                     </div>
                 </div>
             </div>
