@@ -425,11 +425,11 @@ const updateItem = (index: number, field: keyof InvoiceItem, value: string | num
         }
 
         .company-info h4 {
-            font-size: 20px;
+            font-size: 18px;
             font-weight: bold;
             color: #222;
             margin-bottom: 6px;
-            line-height: 1.2;
+            line-height: 1.1;
         }
         
         .trademark {
