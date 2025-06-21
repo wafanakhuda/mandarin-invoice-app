@@ -4,36 +4,29 @@ import type { NextRequest } from 'next/server';
 export function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
   
-  // Allow login page and API routes
+  console.log('=== MIDDLEWARE DEBUG ===');
+  console.log('Path:', path);
+  
+  // Allow login and API routes
   if (path.startsWith('/login') || path.startsWith('/api/') || path.startsWith('/_next/')) {
+    console.log('✅ Allowing:', path);
     return NextResponse.next();
   }
 
-  // Check for authentication cookie
+  // Check for simple auth cookie
   const authCookie = request.cookies.get('invoice-auth');
-  const authToken = process.env.AUTH_TOKEN || 'mandarin_auth_token_secret';
-  const expectedAuthValue = `authenticated-${authToken}`;
+  console.log('Cookie exists:', !!authCookie);
+  console.log('Cookie value:', authCookie?.value);
   
-  console.log('🔍 Middleware check:', { 
-    path,
-    hasAuthCookie: !!authCookie,
-    cookieValue: authCookie?.value?.substring(0, 20) + '...',
-    expectedValue: expectedAuthValue.substring(0, 20) + '...',
-    isValidAuth: authCookie?.value === expectedAuthValue
-  });
-
-  // Redirect to login if not authenticated
-  if (!authCookie || authCookie.value !== expectedAuthValue) {
-    console.log('🔒 Redirecting to login from:', path);
+  if (!authCookie || authCookie.value !== 'authenticated') {
+    console.log('🔒 No valid cookie, redirecting to login');
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  console.log('✅ Allowing access to:', path);
+  console.log('✅ Valid cookie, allowing access');
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico|login).*)',
-  ],
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|login).*)'],
 };
