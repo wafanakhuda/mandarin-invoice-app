@@ -1,12 +1,21 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [status, setStatus] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Check if already logged in
+  useEffect(() => {
+    // Check if there's already an auth cookie
+    if (document.cookie.includes('invoice-auth=authenticated')) {
+      setStatus('Already logged in, redirecting...');
+      window.location.href = '/';
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,7 +29,10 @@ export default function LoginPage() {
 
       const response = await fetch('/api/auth', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+        },
+        credentials: 'same-origin', // Important for cookies
         body: JSON.stringify({ username, password }),
       });
 
@@ -30,10 +42,14 @@ export default function LoginPage() {
 
       if (response.ok) {
         setStatus('✅ Success! Redirecting...');
-        // Hard redirect
+        console.log('✅ Login successful');
+        
+        // Wait a moment for cookie to be set, then redirect
         setTimeout(() => {
-          window.location.href = '/';
-        }, 1000);
+          console.log('🔄 Redirecting to home page');
+          // Use window.location.replace to avoid back button issues
+          window.location.replace('/');
+        }, 1500);
       } else {
         setStatus(`❌ Error: ${data.error}`);
       }
@@ -45,11 +61,16 @@ export default function LoginPage() {
     }
   };
 
-  // Auto-fill function
   const autoFill = () => {
     setUsername('admin');
     setPassword('MandarinDecor2025');
     setStatus('Credentials auto-filled');
+  };
+
+  const checkCookies = () => {
+    const cookies = document.cookie;
+    console.log('Current cookies:', cookies);
+    setStatus(`Cookies: ${cookies}`);
   };
 
   return (
@@ -89,12 +110,20 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <button
-          onClick={autoFill}
-          className="w-full mt-4 bg-gray-600 text-white p-2 rounded-lg hover:bg-gray-700"
-        >
-          Auto-fill: admin / MandarinDecor2025
-        </button>
+        <div className="flex gap-2 mt-4">
+          <button
+            onClick={autoFill}
+            className="flex-1 bg-gray-600 text-white p-2 rounded-lg hover:bg-gray-700 text-sm"
+          >
+            Auto-fill Credentials
+          </button>
+          <button
+            onClick={checkCookies}
+            className="flex-1 bg-purple-600 text-white p-2 rounded-lg hover:bg-purple-700 text-sm"
+          >
+            Check Cookies
+          </button>
+        </div>
 
         {status && (
           <div className="mt-4 p-3 bg-gray-100 rounded-lg">
