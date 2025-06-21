@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -121,9 +120,9 @@ export default function InvoiceGenerator() {
       
       console.log('🔍 Checking auth cookie:', authCookie ? 'Found' : 'Not found');
       
-      if (!authCookie) {
+      if (!authCookie || !authCookie.includes('authenticated')) {
         console.log('🔒 No auth cookie, redirecting to login');
-        window.location.replace('/login');
+        window.location.href = '/login';
         return;
       } else {
         console.log('✅ Authenticated');
@@ -132,8 +131,14 @@ export default function InvoiceGenerator() {
       setIsLoading(false);
     };
     
-    setTimeout(checkAuth, 100);
+    checkAuth();
   }, []);
+
+  // Logout Function
+  const handleLogout = () => {
+    document.cookie = 'invoice-auth=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+    window.location.href = '/login';
+  };
 
   // Custom Units Functions
   const addCustomUnit = () => {
@@ -472,14 +477,6 @@ export default function InvoiceGenerator() {
         .payment-info { font-size: 11px; margin: 4px 0; color: #333; }
         .payment-value { font-weight: bold; color: #8B1538; }
         .payment-note { font-size: 9px; color: #666; margin-top: 6px; font-style: italic; }
-        @media print {
-            body { margin: 0; padding: 0; font-size: 10px; }
-            .invoice-container { max-width: none; padding: 10px; margin: 0; }
-            .payment-details { page-break-inside: avoid; margin-top: 15px; }
-            .footer { page-break-inside: avoid; }
-            .invoice-header-bar { -webkit-print-color-adjust: exact; color-adjust: exact; }
-            .items-table th { -webkit-print-color-adjust: exact; color-adjust: exact; }
-        }
     </style>
 </head>
 <body>
@@ -651,7 +648,6 @@ export default function InvoiceGenerator() {
     );
   }
 
-  // Authentication Redirect Screen
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -673,10 +669,7 @@ export default function InvoiceGenerator() {
             <h1 className="text-3xl font-bold text-gray-900">Invoice Generator</h1>
             <div className="flex gap-2">
               <button
-                onClick={() => {
-                  document.cookie = 'invoice-auth=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
-                  window.location.reload();
-                }}
+                onClick={handleLogout}
                 className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
               >
                 Logout
@@ -732,11 +725,6 @@ export default function InvoiceGenerator() {
                     )}
                   </span>
                 ))}
-              </div>
-              <div className="mt-4 p-3 bg-blue-50 rounded-md">
-                <p className="text-sm text-blue-800">
-                  <strong>Logo &amp; Seal:</strong> Place your logo as <code>/public/assets/logo.png</code> and seal as <code>/public/assets/seal.png</code> in your project folder for automatic display in invoices.
-                </p>
               </div>
             </div>
           )}
@@ -993,11 +981,6 @@ export default function InvoiceGenerator() {
                         </option>
                       ))}
                     </select>
-                    {predefinedClients.length > 1 && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        {predefinedClients.length - 1} saved client(s) + Archierio Design Studio
-                      </p>
-                    )}
                   </div>
 
                   <div className="space-y-3">
