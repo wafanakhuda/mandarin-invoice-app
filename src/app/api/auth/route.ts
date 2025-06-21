@@ -1,62 +1,51 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+
+// Credentials from environment variables
+const VALID_CREDENTIALS = {
+  username: 'admin',
+  password: process.env.INVOICE_PASSWORD || 'admin123' // Fallback for development
+};
 
 export async function POST(request: NextRequest) {
   try {
-    const { password } = await request.json();
-    
-    // Debug: Log what's happening
-    const correctPassword = process.env.INVOICE_PASSWORD;
-    const fallbackPassword = 'mandarin2025';
-    
-    console.log('🔐 Auth Debug:');
-    console.log('- Received password:', password);
-    console.log('- Environment password:', correctPassword ? 'SET' : 'NOT SET');
-    console.log('- Using fallback:', !correctPassword);
-    
-    const passwordToCheck = correctPassword || fallbackPassword;
-    
-    if (password === passwordToCheck) {
-      console.log('✅ Password correct');
+    const body = await request.json();
+    const { username, password } = body;
+
+    console.log('🔐 Login attempt:', { username });
+
+    // Validate credentials
+    if (username === VALID_CREDENTIALS.username && password === VALID_CREDENTIALS.password) {
+      console.log('✅ Valid credentials');
       
-      const response = NextResponse.json({ 
-        success: true,
-        debug: {
-          usedFallback: !correctPassword,
-          passwordLength: passwordToCheck.length
-        }
-      });
+      // Set authentication cookie with environment-based secret
+      const cookieStore = cookies();
+      const authToken = process.env.AUTH_TOKEN || 'fallback-secret';
       
-      response.cookies.set('invoice-auth', process.env.AUTH_TOKEN || 'authenticated', {
+      cookieStore.set('invoice-auth', `authenticated-${authToken}`, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
         maxAge: 60 * 60 * 24 * 7, // 7 days
         path: '/',
       });
-      
-      return response;
-    } else {
-      console.log('❌ Password incorrect');
+
       return NextResponse.json({ 
-        error: 'Invalid password',
-        debug: {
-          expectedLength: passwordToCheck.length,
-          receivedLength: password.length
-        }
-      }, { status: 401 });
+        success: true, 
+        message: 'Login successful' 
+      });
+    } else {
+      console.log('❌ Invalid credentials');
+      return NextResponse.json(
+        { error: 'Invalid username or password' },
+        { status: 401 }
+      );
     }
   } catch (error) {
-    console.log('💥 Auth error:', error);
-    return NextResponse.json({ error: 'Login failed' }, { status: 500 });
+    console.error('Login error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
   }
-}
-
-// Add logout endpoint
-export async function DELETE(request: NextRequest) {
-  const response = NextResponse.json({ success: true, message: 'Logged out' });
-  
-  // Clear the auth cookie
-  response.cookies.delete('invoice-auth');
-  
-  return response;
 }
