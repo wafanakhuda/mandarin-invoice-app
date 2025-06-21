@@ -1,4 +1,4 @@
-// app/api/auth/route.ts (WITH DEBUGGING)
+// app/api/auth/route.ts (SIMPLE VERSION)
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
@@ -7,75 +7,41 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { username, password } = body;
 
-    // Debug: Log environment variables (be careful in production)
-    console.log('🔐 Environment check:', {
-      hasInvoicePassword: !!process.env.INVOICE_PASSWORD,
-      hasAuthToken: !!process.env.AUTH_TOKEN,
-      nodeEnv: process.env.NODE_ENV
-    });
+    console.log('=== AUTH DEBUG ===');
+    console.log('Username:', username);
+    console.log('Password length:', password?.length);
+    console.log('INVOICE_PASSWORD exists:', !!process.env.INVOICE_PASSWORD);
+    console.log('AUTH_TOKEN exists:', !!process.env.AUTH_TOKEN);
+    console.log('NODE_ENV:', process.env.NODE_ENV);
 
-    // Credentials from environment variables
-    const expectedUsername = 'admin';
-    const expectedPassword = process.env.INVOICE_PASSWORD || 'MandarinDecor2025';
+    // Use exact values from your Vercel env
+    const correctUsername = 'admin';
+    const correctPassword = process.env.INVOICE_PASSWORD || 'MandarinDecor2025';
 
-    console.log('🔐 Login attempt:', { 
-      username,
-      passwordLength: password?.length,
-      expectedPasswordLength: expectedPassword.length
-    });
+    console.log('Expected password:', correctPassword);
+    console.log('Passwords match:', password === correctPassword);
 
-    // Validate credentials
-    if (username === expectedUsername && password === expectedPassword) {
-      console.log('✅ Valid credentials - setting cookie');
+    if (username === correctUsername && password === correctPassword) {
+      console.log('✅ Credentials valid - setting simple cookie');
       
-      try {
-        // Set authentication cookie
-        const cookieStore = await cookies();
-        const authToken = process.env.AUTH_TOKEN || 'mandarin_auth_token_secret';
-        const cookieValue = `authenticated-${authToken}`;
-        
-        cookieStore.set('invoice-auth', cookieValue, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'strict',
-          maxAge: 60 * 60 * 24 * 7, // 7 days
-          path: '/',
-        });
-
-        console.log('✅ Cookie set successfully');
-        
-        return NextResponse.json({ 
-          success: true, 
-          message: 'Login successful',
-          debug: {
-            cookieValue: cookieValue.substring(0, 20) + '...' // Partial for security
-          }
-        });
-      } catch (cookieError) {
-        console.error('❌ Cookie setting error:', cookieError);
-        return NextResponse.json(
-          { error: 'Failed to set authentication cookie' },
-          { status: 500 }
-        );
-      }
-    } else {
-      console.log('❌ Invalid credentials:', {
-        usernameMatch: username === expectedUsername,
-        passwordMatch: password === expectedPassword,
-        receivedPassword: password,
-        expectedPassword: expectedPassword
+      // Set SIMPLE cookie first
+      const cookieStore = await cookies();
+      cookieStore.set('invoice-auth', 'authenticated', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 60 * 60 * 24, // 1 day
+        path: '/',
       });
-      
-      return NextResponse.json(
-        { error: 'Invalid username or password' },
-        { status: 401 }
-      );
+
+      console.log('✅ Cookie set');
+      return NextResponse.json({ success: true });
+    } else {
+      console.log('❌ Invalid credentials');
+      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
   } catch (error) {
-    console.error('❌ Login error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    console.error('❌ Auth error:', error);
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
