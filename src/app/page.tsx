@@ -953,7 +953,7 @@ const updateItem = (index: number, field: keyof InvoiceItem, value: string | num
                 </div>
                 <div class="logo-and-title">
                     <div class="logo-section">
-                        <img src="/assets/logo.png" alt="Company Logo" class="logo-image" 
+                        <img src="/assets/logo.PNG" alt="Company Logo" class="logo-image" 
                              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                         <div class="logo-fallback" style="display: none;">MS</div>
                     </div>
@@ -1162,7 +1162,7 @@ const updateItem = (index: number, field: keyof InvoiceItem, value: string | num
               </div>
               <div className="mt-4 p-3 bg-blue-50 rounded-md">
                 <p className="text-sm text-blue-800">
-                  <strong>Logo &amp; Seal:</strong> Place your logo as <code>/public/assets/logo.PNG</code> and seal as <code>/public/assets/seal.png</code> in your project folder for automatic display in invoices.
+                  <strong>Logo &amp; Seal:</strong> Place your logo as <code>/public/assets/logo.png</code> and seal as <code>/public/assets/seal.png</code> in your project folder for automatic display in invoices.
                 </p>
               </div>
             </div>
