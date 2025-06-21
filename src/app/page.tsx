@@ -421,7 +421,7 @@ const updateItem = (index: number, field: keyof InvoiceItem, value: string | num
         
         .company-info {
             flex: 1;
-            max-width: 400px;
+            max-width: 500px;
         }
 
         .company-info h4 {
