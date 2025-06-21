@@ -18,6 +18,7 @@ interface BillTo {
   address: string;
   city: string;
   state: string;
+  pincode: string;
   country: string;
 }
 
@@ -65,6 +66,7 @@ export default function InvoiceGenerator() {
       address: '',
       city: '',
       state: '',
+      pincode: '',
       country: 'India'
     },
     billFrom: {
@@ -73,7 +75,7 @@ export default function InvoiceGenerator() {
       city: 'Hoysala Nagar, Indiranagar, Bengaluru',
       state: 'Karnataka 560038',
       country: 'India',
-      phone: '+91 8971536537',
+      phone: '897-153-6537',
       signatory: 'Sibgatulla khalife'
     },
     items: [{ description: '', quantity: 1, unit: 'nos', rate: 0, amount: 0 }],
@@ -83,29 +85,27 @@ export default function InvoiceGenerator() {
     currency: '₹'
   });
   const [showForm, setShowForm] = useState(false);
+  const [predefinedClients, setPredefinedClients] = useState([
+    {
+      name: 'Archierio Design Studio',
+      company: '',
+      phone: '+91 8147933468',
+      address: '427, 23rd cross road, 9th Main Rd',
+      city: '7th sector, HSR Layout, Bengaluru',
+      state: 'Karnataka',
+      pincode: '560102',
+      country: 'India'
+    }
+  ]);
+
+  const [selectedClient, setSelectedClient] = useState('custom');
   const [editingId, setEditingId] = useState<number | null>(null);
 
-  // Load data from localStorage on component mount
+  // Load data from memory-based storage on component mount
   useEffect(() => {
-    const savedInvoices = localStorage.getItem('invoices');
-    const savedUnits = localStorage.getItem('customUnits');
-    
-    if (savedInvoices) {
-      setInvoices(JSON.parse(savedInvoices));
-    }
-    if (savedUnits) {
-      setCustomUnits(JSON.parse(savedUnits));
-    }
+    // Since localStorage is not available, we'll use in-memory storage
+    // Data will persist only during the session
   }, []);
-
-  // Save data to localStorage whenever they change
-  useEffect(() => {
-    localStorage.setItem('invoices', JSON.stringify(invoices));
-  }, [invoices]);
-
-  useEffect(() => {
-    localStorage.setItem('customUnits', JSON.stringify(customUnits));
-  }, [customUnits]);
 
   const addCustomUnit = () => {
     if (newUnit.trim() && !customUnits.includes(newUnit.trim())) {
@@ -118,6 +118,38 @@ export default function InvoiceGenerator() {
     const defaultUnits = ['nos', 'no', 'pcs', 'kg', 'm', 'ft', 'sqft', 'hrs', 'rolls'];
     if (!defaultUnits.includes(unit)) {
       setCustomUnits(prev => prev.filter(u => u !== unit));
+    }
+  };
+
+  // Add the missing handleClientSelection function
+  const handleClientSelection = (value: string) => {
+    setSelectedClient(value);
+    
+    if (value === 'custom') {
+      // Reset to empty client details for custom entry
+      setCurrentInvoice(prev => ({
+        ...prev,
+        billTo: {
+          name: '',
+          company: '',
+          phone: '',
+          address: '',
+          city: '',
+          state: '',
+          pincode: '',
+          country: 'India'
+        }
+      }));
+    } else {
+      // Load selected predefined client
+      const clientIndex = parseInt(value);
+      const selectedClientData = predefinedClients[clientIndex];
+      if (selectedClientData) {
+        setCurrentInvoice(prev => ({
+          ...prev,
+          billTo: { ...selectedClientData }
+        }));
+      }
     }
   };
 
@@ -145,7 +177,11 @@ export default function InvoiceGenerator() {
 
   const updateItem = (index: number, field: keyof InvoiceItem, value: string | number) => {
     const newItems = [...currentInvoice.items];
-    (newItems[index] as any)[field] = value;
+    if (field === 'description' || field === 'unit') {
+      (newItems[index] as Record<string, unknown>)[field] = value;
+    } else {
+      (newItems[index] as Record<string, unknown>)[field] = value;
+    }
     
     if (field === 'quantity' || field === 'rate') {
       newItems[index].amount = parseFloat(calculateItemAmount(
@@ -172,6 +208,23 @@ export default function InvoiceGenerator() {
       id: editingId || Date.now(),
       invoiceNumber: currentInvoice.invoiceNumber || `md${Date.now().toString().slice(-3)}`
     };
+
+    // Save new client to predefined clients if it's custom and has complete info
+    if (selectedClient === 'custom' && 
+        currentInvoice.billTo.name && 
+        currentInvoice.billTo.address && 
+        currentInvoice.billTo.city) {
+      
+      const clientExists = predefinedClients.some(client => 
+        client.name === currentInvoice.billTo.name && 
+        client.phone === currentInvoice.billTo.phone
+      );
+      
+      if (!clientExists) {
+        const newClient = { ...currentInvoice.billTo };
+        setPredefinedClients(prev => [...prev, newClient]);
+      }
+    }
 
     if (editingId) {
       setInvoices(prev => prev.map(inv => inv.id === editingId ? invoiceToSave : inv));
@@ -208,6 +261,7 @@ export default function InvoiceGenerator() {
         address: '',
         city: '',
         state: '',
+        pincode: '',
         country: 'India'
       },
       billFrom: {
@@ -225,6 +279,7 @@ export default function InvoiceGenerator() {
       discount: 0,
       currency: '₹'
     });
+    setSelectedClient('custom');
   };
 
   const numberToWords = (num: number): string => {
@@ -316,7 +371,7 @@ export default function InvoiceGenerator() {
     <title>Invoice ${invoice.invoiceNumber}</title>
     <style>
         @page {
-            margin: 0.5in;
+            margin: 0.3in;
             size: A4;
         }
         
@@ -328,130 +383,141 @@ export default function InvoiceGenerator() {
         
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.4;
+            line-height: 1.2;
             color: #333333;
             background: white;
-            font-size: 12px;
+            font-size: 11px;
         }
         
         .invoice-container {
             max-width: 210mm;
             margin: 0 auto;
-            padding: 20px;
+            padding: 15px;
             background: white;
             min-height: 297mm;
         }
         
-        /* Header Section */
-     .header {
-    padding: 20px 25px;
-    border-radius: 8px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-}
-        
-.company-section {
-    display: flex;
-    align-items: center;
-    gap: 24px; /* more spacing to match bigger logo */
-} 
-        .logo-section {
-            flex-shrink: 0;
+        /* Improved Header Section */
+        .header {
+            padding: 10px 0 45px 0;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #eee;
+            min-height: 140px;
         }
-   .logo-image {
-    width: 140px;  /* much bigger logo */
-    height: 140px; /* much bigger logo */
-    object-fit: contain;
-    border-radius: 8px;
-    flex-shrink: 0;
-}
-
         
-        .logo-fallback {
-            width: 70px;
-            height: 70px;
-            background: #333;
-            color: white;
+        .header-content {
             display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            font-weight: bold;
-            border-radius: 8px;
+            justify-content: space-between;
+            align-items: flex-start;
+            height: 90px;
         }
         
         .company-info {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-}
+            flex: 1;
+            max-width: 400px;
+        }
 
-.company-info h1 {
-    font-size: 20px;
-    font-weight: bold;
-    color: #222;
-    margin-bottom: 2px;
-}
+        .company-info h4 {
+            font-size: 20px;
+            font-weight: bold;
+            color: #222;
+            margin-bottom: 6px;
+            line-height: 1.2;
+        }
         
         .trademark {
             font-size: 14px;
             vertical-align: super;
             margin-left: 2px;
         }
-   .company-tagline {
-    font-size: 12px;
-    font-style: italic;
-    color: #555;
-    margin-bottom: 2px;
-}
         
-       .company-address {
-    font-size: 11px;
-    color: #666;
-    max-width: 300px;
-    line-height: 1.3;
-}
-
+        .company-tagline {
+            font-size: 14px;
+            font-style: italic;
+            color: #555;
+            margin-bottom: 8px;
+            line-height: 1.3;
+        }
+        
+        .company-address {
+            font-size: 12px;
+            color: #666;
+            line-height: 1.4;
+        }
+        
+    
+        
+        .logo-and-title {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            flex-shrink: 0;
+            margin-top: -10px;
+        }
+        
+        .logo-section {
+            text-align: center;
+        }
+        
+        .logo-image {
+            width: 200px;
+            height: 60px;
+            object-fit: cover;
+            object-position: center;
+            border-radius: 8px;
+        }
+        
+        .logo-fallback {
+            width: 200px;
+            height: 60px;
+            background: #333;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            font-weight: bold;
+            border-radius: 8px;
+        }
         
         .invoice-title {
-            flex: 1;
             text-align: right;
         }
         
-        .invoice-title h1 {
-    font-size: 28px;
-    color: #8B1538;
-    font-weight: bold;
-    letter-spacing: 1px;
-    margin: 0;
-    text-transform: uppercase;
-}
+        .invoice-title h2 {
+            font-size: 20px;
+            color: #8B1538;
+            font-weight: bold;
+            letter-spacing: 1px;
+            margin: 0;
+            text-transform: uppercase;
+            line-height: 1;
+        }
         
-        /* Bill To and Invoice Details */
+        /* Compressed Bill To and Invoice Details */
         .invoice-info {
             display: flex;
             justify-content: space-between;
-            margin: 30px 0;
+            margin: 15px 0;
         }
         
         .bill-to {
             flex: 1;
-            margin-right: 50px;
+            margin-right: 30px;
         }
         
         .bill-to h3 {
-            font-size: 13px;
+            font-size: 14px;
             font-weight: bold;
             color: #333;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 0.5px;
         }
         
         .bill-to p {
-            font-size: 12px;
+            font-size: 13px;
             margin: 3px 0;
             color: #333;
             line-height: 1.3;
@@ -463,7 +529,7 @@ export default function InvoiceGenerator() {
         }
         
         .invoice-details p {
-            font-size: 12px;
+            font-size: 13px;
             margin: 3px 0;
             color: #333;
             line-height: 1.3;
@@ -473,12 +539,12 @@ export default function InvoiceGenerator() {
             font-weight: 600;
         }
         
-        /* Burgundy Header Bar */
+        /* Compressed Burgundy Header Bar */
         .invoice-header-bar {
             background: #8B1538;
             color: white;
-            padding: 20px 25px;
-            margin: 25px 0;
+            padding: 12px 15px;
+            margin: 15px 0;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -492,13 +558,13 @@ export default function InvoiceGenerator() {
         
         .header-item h4 {
             font-size: 12px;
-            margin-bottom: 8px;
+            margin-bottom: 4px;
             opacity: 0.9;
             font-weight: normal;
         }
         
         .header-item p {
-            font-size: 15px;
+            font-size: 14px;
             font-weight: bold;
         }
         
@@ -509,21 +575,21 @@ export default function InvoiceGenerator() {
         
         .total-due h4 {
             font-size: 12px;
-            margin-bottom: 8px;
+            margin-bottom: 4px;
             opacity: 0.9;
             font-weight: normal;
         }
         
         .total-due p {
-            font-size: 18px;
+            font-size: 16px;
             font-weight: bold;
         }
         
-        /* Items Table */
+        /* Items Table with Better Font Sizes */
         .items-table {
             width: 100%;
             border-collapse: collapse;
-            margin: 25px 0;
+            margin: 20px 0;
             border: 2px solid #333;
             background: white;
         }
@@ -531,9 +597,9 @@ export default function InvoiceGenerator() {
         .items-table th {
             background: #333;
             color: white;
-            padding: 15px 12px;
+            padding: 12px 8px;
             text-align: left;
-            font-size: 13px;
+            font-size: 14px;
             font-weight: bold;
             border-right: 1px solid #555;
         }
@@ -547,11 +613,12 @@ export default function InvoiceGenerator() {
         }
         
         .items-table td {
-            padding: 12px;
+            padding: 12px 8px;
             border-bottom: 1px solid #ddd;
             border-right: 1px solid #ddd;
-            font-size: 12px;
+            font-size: 13px;
             vertical-align: top;
+            line-height: 1.4;
         }
         
         .items-table td:last-child {
@@ -569,59 +636,74 @@ export default function InvoiceGenerator() {
         }
         
         .total-row td {
-            padding: 15px 12px;
+            padding: 14px 8px;
             font-size: 15px;
             border-bottom: 2px solid #333;
         }
         
         .tax-row td {
-            padding: 10px 12px;
-            font-size: 12px;
+            padding: 10px 8px;
+            font-size: 13px;
             background: #f5f5f5;
+        }
+        
+        /* Better spacing sections with larger fonts */
+        .amount-words {
+            margin: 15px 0;
+            padding: 12px;
+            background: #f0f8ff;
+            border: 1px solid #8B1538;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        
+        .amount-words strong {
+            color: #8B1538;
+            font-size: 14px;
         }
         
         /* Notes Section */
         .notes-section {
-            margin: 25px 0;
-            padding: 15px;
+            margin: 20px 0;
+            padding: 12px;
             background: #f8f9fa;
-            border-left: 4px solid #8B1538;
+            border-left: 3px solid #8B1538;
         }
         
         .notes-title {
             font-weight: bold;
-            font-size: 13px;
+            font-size: 14px;
             color: #8B1538;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }
         
         .notes-content {
-            font-size: 12px;
+            font-size: 13px;
             color: #333;
             line-height: 1.4;
         }
         
-        /* Footer */
+        /* Footer with better spacing */
         .footer {
             display: flex;
             justify-content: space-between;
             align-items: flex-end;
-            margin-top: 50px;
-            padding-top: 25px;
+            margin-top: 30px;
+            padding-top: 20px;
             border-top: 1px solid #ddd;
         }
         
         .footer-company {
             flex: 1;
-            font-size: 11px;
+            font-size: 12px;
             color: #666;
             line-height: 1.4;
-            max-width: 250px;
+            max-width: 200px;
         }
         
         .footer-company strong {
             color: #333;
-            font-size: 12px;
+            font-size: 13px;
         }
         
         .signature-section {
@@ -632,105 +714,39 @@ export default function InvoiceGenerator() {
         .signature-label {
             font-size: 12px;
             color: #666;
-            margin-bottom: 25px;
-        }
-        
-        .seal-container {
-            margin-bottom: 20px;
-            display: flex;
-            justify-content: center;
-        }
-        
-        .seal-image {
-            width: 120px;
-            height: 120px;
-            object-fit: contain;
-        }
-        
-        .seal-fallback {
-            width: 120px;
-            height: 120px;
-            border: 3px solid #333;
-            border-radius: 50%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            background: white;
-        }
-        
-        .seal-text-top {
-            font-size: 11px;
-            font-weight: bold;
-            letter-spacing: 1px;
-            margin-bottom: 5px;
-            text-transform: uppercase;
-        }
-        
-        .seal-logo {
-            font-size: 24px;
-            font-weight: bold;
-            margin: 5px 0;
-        }
-        
-        .seal-text-bottom {
-            font-size: 10px;
-            font-weight: bold;
-        }
-        
-        .seal-stars {
-            position: absolute;
-            font-size: 12px;
-        }
-        
-        .seal-star-left {
-            left: 15px;
-            bottom: 25px;
-        }
-        
-        .seal-star-right {
-            right: 15px;
-            bottom: 25px;
-        }
-        
-        .seal-phone {
-            position: absolute;
-            bottom: 8px;
-            font-size: 9px;
-            font-weight: bold;
+            margin-bottom: 15px;
         }
         
         .signatory-name {
             font-size: 13px;
             font-weight: bold;
             border-top: 2px solid #333;
-            padding-top: 10px;
+            padding-top: 6px;
             display: inline-block;
-            min-width: 200px;
+            min-width: 150px;
             color: #333;
         }
         
         /* Payment Details */
         .payment-details {
-            margin-top: 40px;
+            margin-top: 25px;
             padding: 20px;
             border: 2px solid #8B1538;
-            border-radius: 8px;
+            border-radius: 6px;
             background: #f9f9f9;
             text-align: center;
         }
         
         .payment-title {
-            font-size: 16px;
+            font-size: 15px;
             font-weight: bold;
             color: #8B1538;
-            margin-bottom: 15px;
+            margin-bottom: 8px;
         }
         
         .payment-info {
             font-size: 13px;
-            margin: 8px 0;
+            margin: 4px 0;
             color: #333;
         }
         
@@ -742,7 +758,142 @@ export default function InvoiceGenerator() {
         .payment-note {
             font-size: 11px;
             color: #666;
-            margin-top: 12px;
+            margin-top: 6px;
+            font-style: italic;
+        }
+        
+        .footer-company {
+            flex: 1;
+            font-size: 9px;
+            color: #666;
+            line-height: 1.3;
+            max-width: 200px;
+        }
+        
+        .footer-company strong {
+            color: #333;
+            font-size: 10px;
+        }
+        
+        .signature-section {
+            text-align: center;
+            flex: 1;
+        }
+        
+        .signature-label {
+            font-size: 10px;
+            color: #666;
+            margin-bottom: 15px;
+        }
+        
+        .seal-container {
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: center;
+        }
+        
+        .seal-image {
+            width: 80px;
+            height: 80px;
+            object-fit: contain;
+        }
+        
+        .seal-fallback {
+            width: 80px;
+            height: 80px;
+            border: 2px solid #333;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            background: white;
+        }
+        
+        .seal-text-top {
+            font-size: 8px;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+            margin-bottom: 3px;
+            text-transform: uppercase;
+        }
+        
+        .seal-logo {
+            font-size: 16px;
+            font-weight: bold;
+            margin: 2px 0;
+        }
+        
+        .seal-text-bottom {
+            font-size: 7px;
+            font-weight: bold;
+        }
+        
+        .seal-stars {
+            position: absolute;
+            font-size: 8px;
+        }
+        
+        .seal-star-left {
+            left: 10px;
+            bottom: 15px;
+        }
+        
+        .seal-star-right {
+            right: 10px;
+            bottom: 15px;
+        }
+        
+        .seal-phone {
+            position: absolute;
+            bottom: 5px;
+            font-size: 6px;
+            font-weight: bold;
+        }
+        
+        .signatory-name {
+            font-size: 11px;
+            font-weight: bold;
+            border-top: 2px solid #333;
+            padding-top: 6px;
+            display: inline-block;
+            min-width: 150px;
+            color: #333;
+        }
+        
+        /* Compressed Payment Details */
+        .payment-details {
+            margin-top: 20px;
+            padding: 12px;
+            border: 2px solid #8B1538;
+            border-radius: 6px;
+            background: #f9f9f9;
+            text-align: center;
+        }
+        
+        .payment-title {
+            font-size: 13px;
+            font-weight: bold;
+            color: #8B1538;
+            margin-bottom: 8px;
+        }
+        
+        .payment-info {
+            font-size: 11px;
+            margin: 4px 0;
+            color: #333;
+        }
+        
+        .payment-value {
+            font-weight: bold;
+            color: #8B1538;
+        }
+        
+        .payment-note {
+            font-size: 9px;
+            color: #666;
+            margin-top: 6px;
             font-style: italic;
         }
         
@@ -750,18 +901,18 @@ export default function InvoiceGenerator() {
             body {
                 margin: 0;
                 padding: 0;
-                font-size: 11px;
+                font-size: 10px;
             }
             
             .invoice-container {
                 max-width: none;
-                padding: 15px;
+                padding: 10px;
                 margin: 0;
             }
             
             .payment-details {
                 page-break-inside: avoid;
-                margin-top: 30px;
+                margin-top: 15px;
             }
             
             .footer {
@@ -784,25 +935,25 @@ export default function InvoiceGenerator() {
     <div class="invoice-container">
         <!-- Header Section -->
         <div class="header">
-            <div class="company-section">
-                <div class="logo-section">
-                    <img src="/assets/logo.PNG" alt="Company Logo" class="logo-image" 
-                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                    <div class="logo-fallback" style="display: none;">MS</div>
-                </div>
+            <div class="header-content">
                 <div class="company-info">
                     <h1>${invoice.billFrom.name}<span class="trademark">™</span></h1>
                     <div class="company-tagline">Interiors that Reflects You</div>
                     <div class="company-address">
-                        ${invoice.billFrom.address}<br>
-                        ${invoice.billFrom.city}, ${invoice.billFrom.state}<br>
-                        ${invoice.billFrom.country}
-                        ${invoice.billFrom.phone}
+                        ${invoice.billFrom.address}, ${invoice.billFrom.city}, ${invoice.billFrom.state}<br>
+                        ${invoice.billFrom.country} | Phone: ${invoice.billFrom.phone}
                     </div>
                 </div>
-            </div>
-            <div class="invoice-title">
-                <h1>Invoice</h1>
+                <div class="logo-and-title">
+                    <div class="logo-section">
+                        <img src="/assets/logo.png" alt="Company Logo" class="logo-image" 
+                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                        <div class="logo-fallback" style="display: none;">MS</div>
+                    </div>
+                    <div class="invoice-title">
+                        <h1>INVOICE</h1>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -811,18 +962,10 @@ export default function InvoiceGenerator() {
             <div class="bill-to">
                 <h3>BILL TO</h3>
                 <p><strong>${invoice.billTo.name}</strong></p>
-                ${invoice.billTo.company ? `<p><strong>${invoice.billTo.company}</strong></p>` : ''}
+                ${invoice.billTo.company && invoice.billTo.company !== invoice.billTo.name ? `<p><strong>${invoice.billTo.company}</strong></p>` : ''}
                 <p>${invoice.billTo.address}</p>
-                <p>${invoice.billTo.city}, ${invoice.billTo.state}</p>
-                <p>${invoice.billTo.country}</p>
-                ${invoice.billTo.phone ? `<p> ${invoice.billTo.phone}</p>` : ''}
-            </div>
-            <div class="invoice-details">
-                <p><strong>Invoice No.:</strong> ${invoice.invoiceNumber}</p>
-                <p><strong>Issue date:</strong> ${new Date(invoice.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
-                <p><strong>Due date:</strong> ${new Date(invoice.dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
-                <br>
-                <p><strong>Payment method:</strong> ${invoice.paymentMethod}</p>
+                <p>${invoice.billTo.city}, ${invoice.billTo.state} ${invoice.billTo.pincode}</p>
+                <p>${invoice.billTo.country} | Phone: ${invoice.billTo.phone}</p>
             </div>
         </div>
 
@@ -885,8 +1028,8 @@ export default function InvoiceGenerator() {
         </table>
 
         <!-- Amount in Words -->
-        <div style="margin: 15px 0; padding: 12px; background: #f0f8ff; border: 1px solid #8B1538; border-radius: 5px;">
-            <strong style="color: #8B1538;">Amount in Words:</strong> 
+        <div class="amount-words">
+            <strong>Amount in Words:</strong> 
             <span style="font-style: italic; color: #333;">${amountInWords}</span>
         </div>
 
@@ -917,10 +1060,10 @@ export default function InvoiceGenerator() {
                         <div class="seal-text-bottom">Bengaluru</div>
                         <div class="seal-stars seal-star-left">★</div>
                         <div class="seal-stars seal-star-right">★</div>
-                        <div class="seal-phone">Mob: ${invoice.billFrom.phone}</div>
+                        <div class="seal-phone">Mob: +91 8971536537</div>
                     </div>
                 </div>
-                <div class="signatory-name">${invoice.billFrom.signatory} ${invoice.billFrom.phone}</div>
+                <div class="signatory-name">${invoice.billFrom.signatory}</div>
             </div>
         </div>
 
@@ -1012,13 +1155,24 @@ export default function InvoiceGenerator() {
               </div>
               <div className="mt-4 p-3 bg-blue-50 rounded-md">
                 <p className="text-sm text-blue-800">
-                  <strong>Logo & Seal:</strong> Place your logo as <code>/public/assets/logo.png</code> and seal as <code>/public/assets/seal.png</code> in your project folder for automatic display in invoices.
+                  <strong>Logo &amp; Seal:</strong> Place your logo as <code>/public/assets/logo.PNG</code> and seal as <code>/public/assets/seal.png</code> in your project folder for automatic display in invoices.
                 </p>
               </div>
             </div>
           )}
 
-          {/* Invoice List */}
+          {/* Enhanced Invoice List Header */}
+          {!showForm && (
+            <div className="mb-4 flex justify-between items-center">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">All Invoices</h2>
+                <p className="text-sm text-gray-600">
+                  Total: {invoices.length} invoice(s) | 
+                  Clients: {predefinedClients.length} saved
+                </p>
+              </div>
+            </div>
+          )}
           {!showForm && (
             <div className="overflow-x-auto">
               <table className="w-full border-collapse border border-gray-300">
@@ -1242,6 +1396,29 @@ export default function InvoiceGenerator() {
 
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-3">Bill To (Client Details)</h3>
+                  
+                  {/* Client Selection Dropdown */}
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Select Client</label>
+                    <select
+                      value={selectedClient}
+                      onChange={(e) => handleClientSelection(e.target.value)}
+                      className="w-full p-2 border border-gray-300 rounded-md bg-white"
+                    >
+                      <option value="custom">Enter Custom Client Details</option>
+                      {predefinedClients.map((client, index) => (
+                        <option key={index} value={index.toString()}>
+                          {client.name} - {client.phone}
+                        </option>
+                      ))}
+                    </select>
+                    {predefinedClients.length > 1 && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        {predefinedClients.length - 1} saved client(s) + Archierio Design Studio
+                      </p>
+                    )}
+                  </div>
+
                   <div className="space-y-3">
                     <input
                       type="text"
@@ -1252,6 +1429,7 @@ export default function InvoiceGenerator() {
                         billTo: { ...prev.billTo, name: e.target.value }
                       }))}
                       className="w-full p-2 border border-gray-300 rounded-md"
+                      disabled={selectedClient !== 'custom'}
                     />
                     <input
                       type="text"
@@ -1262,6 +1440,7 @@ export default function InvoiceGenerator() {
                         billTo: { ...prev.billTo, company: e.target.value }
                       }))}
                       className="w-full p-2 border border-gray-300 rounded-md"
+                      disabled={selectedClient !== 'custom'}
                     />
                     <input
                       type="text"
@@ -1272,6 +1451,7 @@ export default function InvoiceGenerator() {
                         billTo: { ...prev.billTo, phone: e.target.value }
                       }))}
                       className="w-full p-2 border border-gray-300 rounded-md"
+                      disabled={selectedClient !== 'custom'}
                     />
                     <input
                       type="text"
@@ -1282,6 +1462,7 @@ export default function InvoiceGenerator() {
                         billTo: { ...prev.billTo, address: e.target.value }
                       }))}
                       className="w-full p-2 border border-gray-300 rounded-md"
+                      disabled={selectedClient !== 'custom'}
                     />
                     <input
                       type="text"
@@ -1292,8 +1473,9 @@ export default function InvoiceGenerator() {
                         billTo: { ...prev.billTo, city: e.target.value }
                       }))}
                       className="w-full p-2 border border-gray-300 rounded-md"
+                      disabled={selectedClient !== 'custom'}
                     />
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-3 gap-2">
                       <input
                         type="text"
                         placeholder="State"
@@ -1303,6 +1485,18 @@ export default function InvoiceGenerator() {
                           billTo: { ...prev.billTo, state: e.target.value }
                         }))}
                         className="w-full p-2 border border-gray-300 rounded-md"
+                        disabled={selectedClient !== 'custom'}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Pincode"
+                        value={currentInvoice.billTo.pincode}
+                        onChange={(e) => setCurrentInvoice(prev => ({
+                          ...prev,
+                          billTo: { ...prev.billTo, pincode: e.target.value }
+                        }))}
+                        className="w-full p-2 border border-gray-300 rounded-md"
+                        disabled={selectedClient !== 'custom'}
                       />
                       <input
                         type="text"
@@ -1313,9 +1507,26 @@ export default function InvoiceGenerator() {
                           billTo: { ...prev.billTo, country: e.target.value }
                         }))}
                         className="w-full p-2 border border-gray-300 rounded-md"
+                        disabled={selectedClient !== 'custom'}
                       />
                     </div>
                   </div>
+                  
+                  {selectedClient !== 'custom' && (
+                    <div className="mt-3 p-3 bg-green-50 rounded-md border border-green-200">
+                      <p className="text-sm text-green-800">
+                        <strong>Selected:</strong> {predefinedClients[parseInt(selectedClient)]?.name}
+                      </p>
+                    </div>
+                  )}
+                  
+                  {selectedClient === 'custom' && (
+                    <div className="mt-3 p-3 bg-blue-50 rounded-md border border-blue-200">
+                      <p className="text-sm text-blue-800">
+                        <strong>💡 Auto-Save:</strong> This client will be automatically saved for future invoices when you save this invoice.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
 
