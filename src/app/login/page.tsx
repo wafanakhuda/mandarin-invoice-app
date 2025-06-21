@@ -1,4 +1,3 @@
-// app/login/page.tsx
 'use client';
 
 import { useState } from 'react';
@@ -9,14 +8,18 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [debugInfo, setDebugInfo] = useState('');
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
+    setDebugInfo('Starting login...');
 
     try {
+      console.log('🔐 Attempting login with:', { username, passwordLength: password.length });
+      
       const response = await fetch('/api/auth', {
         method: 'POST',
         headers: {
@@ -25,18 +28,24 @@ export default function LoginPage() {
         body: JSON.stringify({ username, password }),
       });
 
+      console.log('📡 Response status:', response.status);
       const data = await response.json();
+      console.log('📡 Response data:', data);
 
       if (response.ok) {
+        setDebugInfo('✅ Login successful, redirecting...');
         console.log('✅ Login successful, redirecting...');
-        router.push('/');
-        router.refresh();
+        
+        // Force a hard refresh to ensure cookies are recognized
+        window.location.href = '/';
       } else {
         setError(data.error || 'Login failed');
+        setDebugInfo(`❌ Error: ${data.error}`);
       }
     } catch (error) {
-      console.error('Login error:', error);
-      setError('Something went wrong. Please try again.');
+      console.error('❌ Login error:', error);
+      setError('Network error. Please try again.');
+      setDebugInfo(`❌ Network error: ${error}`);
     } finally {
       setIsLoading(false);
     }
@@ -88,6 +97,12 @@ export default function LoginPage() {
               </div>
             )}
 
+            {debugInfo && (
+              <div className="bg-blue-50 text-blue-600 p-3 rounded-lg text-sm">
+                <strong>Debug:</strong> {debugInfo}
+              </div>
+            )}
+
             <button
               type="submit"
               disabled={isLoading}
@@ -98,14 +113,27 @@ export default function LoginPage() {
           </form>
 
           <div className="mt-8 p-4 bg-gray-50 rounded-lg">
-            <h3 className="font-medium text-gray-900 mb-2">Demo Credentials</h3>
+            <h3 className="font-medium text-gray-900 mb-2">Login Credentials</h3>
             <p className="text-sm text-gray-600">
               <strong>Username:</strong> admin<br />
               <strong>Password:</strong> MandarinDecor2025
             </p>
             <p className="text-xs text-gray-500 mt-2">
-              (In production: uses INVOICE_PASSWORD environment variable)
+              (Production uses INVOICE_PASSWORD environment variable)
             </p>
+          </div>
+
+          {/* Quick Test Button */}
+          <div className="mt-4">
+            <button
+              onClick={() => {
+                setUsername('admin');
+                setPassword('MandarinDecor2025');
+              }}
+              className="w-full bg-gray-600 text-white py-2 px-4 rounded-lg hover:bg-gray-700 text-sm"
+            >
+              Auto-fill Credentials
+            </button>
           </div>
         </div>
       </div>
