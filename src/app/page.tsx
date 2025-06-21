@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -48,11 +49,37 @@ interface Invoice {
 }
 
 export default function InvoiceGenerator() {
+  // Authentication States
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Main States
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [selectedClient, setSelectedClient] = useState('custom');
+
+  // Units Management
   const [customUnits, setCustomUnits] = useState<string[]>([
     'nos', 'no', 'pcs', 'kg', 'm', 'ft', 'sqft', 'hrs', 'boxes', 'sets', 'pairs', 'rolls'
   ]);
   const [newUnit, setNewUnit] = useState('');
+
+  // Predefined Clients
+  const [predefinedClients, setPredefinedClients] = useState([
+    {
+      name: 'Archierio Design Studio',
+      company: '',
+      phone: '+91 8147933468',
+      address: '427, 23rd cross road, 9th Main Rd',
+      city: '7th sector, HSR Layout, Bengaluru',
+      state: 'Karnataka',
+      pincode: '560102',
+      country: 'India'
+    }
+  ]);
+
+  // Current Invoice State
   const [currentInvoice, setCurrentInvoice] = useState<Invoice>({
     id: null,
     invoiceNumber: '',
@@ -84,29 +111,31 @@ export default function InvoiceGenerator() {
     discount: 0,
     currency: '₹'
   });
-  const [showForm, setShowForm] = useState(false);
-  const [predefinedClients, setPredefinedClients] = useState([
-    {
-      name: 'Archierio Design Studio',
-      company: '',
-      phone: '+91 8147933468',
-      address: '427, 23rd cross road, 9th Main Rd',
-      city: '7th sector, HSR Layout, Bengaluru',
-      state: 'Karnataka',
-      pincode: '560102',
-      country: 'India'
-    }
-  ]);
 
-  const [selectedClient, setSelectedClient] = useState('custom');
-  const [editingId, setEditingId] = useState<number | null>(null);
-
-  // Load data from memory-based storage on component mount
+  // Authentication Check on Mount
   useEffect(() => {
-    // Since localStorage is not available, we'll use in-memory storage
-    // Data will persist only during the session
+    const checkAuth = () => {
+      const authCookie = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('invoice-auth='));
+      
+      console.log('🔍 Checking auth cookie:', authCookie ? 'Found' : 'Not found');
+      
+      if (!authCookie) {
+        console.log('🔒 No auth cookie, redirecting to login');
+        window.location.replace('/login');
+        return;
+      } else {
+        console.log('✅ Authenticated');
+        setIsAuthenticated(true);
+      }
+      setIsLoading(false);
+    };
+    
+    setTimeout(checkAuth, 100);
   }, []);
 
+  // Custom Units Functions
   const addCustomUnit = () => {
     if (newUnit.trim() && !customUnits.includes(newUnit.trim())) {
       setCustomUnits(prev => [...prev, newUnit.trim()]);
@@ -121,12 +150,11 @@ export default function InvoiceGenerator() {
     }
   };
 
-  // Add the missing handleClientSelection function
+  // Client Selection Function
   const handleClientSelection = (value: string) => {
     setSelectedClient(value);
     
     if (value === 'custom') {
-      // Reset to empty client details for custom entry
       setCurrentInvoice(prev => ({
         ...prev,
         billTo: {
@@ -141,7 +169,6 @@ export default function InvoiceGenerator() {
         }
       }));
     } else {
-      // Load selected predefined client
       const clientIndex = parseInt(value);
       const selectedClientData = predefinedClients[clientIndex];
       if (selectedClientData) {
@@ -153,6 +180,7 @@ export default function InvoiceGenerator() {
     }
   };
 
+  // Calculation Functions
   const calculateItemAmount = (quantity: number, rate: number): string => {
     return (quantity * rate).toFixed(2);
   };
@@ -168,6 +196,7 @@ export default function InvoiceGenerator() {
     return (subtotal + tax - discount).toFixed(2);
   };
 
+  // Item Management Functions
   const addItem = () => {
     setCurrentInvoice(prev => ({
       ...prev,
@@ -175,31 +204,31 @@ export default function InvoiceGenerator() {
     }));
   };
 
-const updateItem = (index: number, field: keyof InvoiceItem, value: string | number) => {
-  const newItems = [...currentInvoice.items];
-  
-  // Type-safe field updates
-  if (field === 'description') {
-    newItems[index].description = value as string;           // ✅ Direct assignment
-  } else if (field === 'unit') {
-    newItems[index].unit = value as string;                  // ✅ Direct assignment
-  } else if (field === 'quantity') {
-    newItems[index].quantity = value as number;              // ✅ Direct assignment
-  } else if (field === 'rate') {
-    newItems[index].rate = value as number;                  // ✅ Direct assignment
-  } else if (field === 'amount') {
-    newItems[index].amount = value as number;                // ✅ Direct assignment
-  }
-  
-  if (field === 'quantity' || field === 'rate') {
-    newItems[index].amount = parseFloat(calculateItemAmount(
-      newItems[index].quantity,
-      newItems[index].rate
-    ));
-  }
-  
-  setCurrentInvoice(prev => ({ ...prev, items: newItems }));
-};
+  const updateItem = (index: number, field: keyof InvoiceItem, value: string | number) => {
+    const newItems = [...currentInvoice.items];
+    
+    if (field === 'description') {
+      newItems[index].description = value as string;
+    } else if (field === 'unit') {
+      newItems[index].unit = value as string;
+    } else if (field === 'quantity') {
+      newItems[index].quantity = value as number;
+    } else if (field === 'rate') {
+      newItems[index].rate = value as number;
+    } else if (field === 'amount') {
+      newItems[index].amount = value as number;
+    }
+    
+    if (field === 'quantity' || field === 'rate') {
+      newItems[index].amount = parseFloat(calculateItemAmount(
+        newItems[index].quantity,
+        newItems[index].rate
+      ));
+    }
+    
+    setCurrentInvoice(prev => ({ ...prev, items: newItems }));
+  };
+
   const removeItem = (index: number) => {
     if (currentInvoice.items.length > 1) {
       setCurrentInvoice(prev => ({
@@ -209,6 +238,7 @@ const updateItem = (index: number, field: keyof InvoiceItem, value: string | num
     }
   };
 
+  // Invoice Management Functions
   const saveInvoice = () => {
     const invoiceToSave: Invoice = {
       ...currentInvoice,
@@ -216,7 +246,7 @@ const updateItem = (index: number, field: keyof InvoiceItem, value: string | num
       invoiceNumber: currentInvoice.invoiceNumber || `md${Date.now().toString().slice(-3)}`
     };
 
-    // Save new client to predefined clients if it's custom and has complete info
+    // Save new client if custom
     if (selectedClient === 'custom' && 
         currentInvoice.billTo.name && 
         currentInvoice.billTo.address && 
@@ -289,6 +319,7 @@ const updateItem = (index: number, field: keyof InvoiceItem, value: string | num
     setSelectedClient('custom');
   };
 
+  // Number to Words Function
   const numberToWords = (num: number): string => {
     const ones = [
       '', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
@@ -360,6 +391,7 @@ const updateItem = (index: number, field: keyof InvoiceItem, value: string | num
     return result;
   };
 
+  // PDF Generation Function
   const generatePDF = (invoice: Invoice) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
@@ -377,570 +409,81 @@ const updateItem = (index: number, field: keyof InvoiceItem, value: string | num
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Invoice ${invoice.invoiceNumber}</title>
     <style>
-        @page {
-            margin: 0.3in;
-            size: A4;
-        }
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.2;
-            color: #333333;
-            background: white;
-            font-size: 11px;
-        }
-        
-        .invoice-container {
-            max-width: 210mm;
-            margin: 0 auto;
-            padding: 15px;
-            background: white;
-            min-height: 297mm;
-        }
-        
-        /* Improved Header Section */
-        .header {
-            padding: 10px 0 45px 0;
-            margin-bottom: 30px;
-            border-bottom: 2px solid #eee;
-            min-height: 140px;
-        }
-        
-        .header-content {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            height: 90px;
-        }
-        
-        .company-info {
-            flex: 1;
-            max-width: 500px;
-        }
-
-        .company-info h4 {
-            font-size: 16px;
-            font-weight: bold;
-            color: #222;
-            margin-bottom: 6px;
-            line-height: 1.1;
-        }
-        
-        .trademark {
-            font-size: 14px;
-            vertical-align: super;
-            margin-left: 2px;
-        }
-        
-        .company-tagline {
-            font-size: 14px;
-            font-style: italic;
-            color: #555;
-            margin-bottom: 8px;
-            line-height: 1.3;
-        }
-        
-        .company-address {
-            font-size: 12px;
-            color: #666;
-            line-height: 1.4;
-        }
-        
-    
-        
-        .logo-and-title {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 5px;
-            flex-shrink: 0;
-            margin-top: -10px;
-        }
-        
-        .logo-section {
-            text-align: center;
-        }
-        
-        .logo-image {
-            width: 200px;
-            height: 60px;
-            object-fit: cover;
-            object-position: center;
-            border-radius: 8px;
-        }
-        
-        .logo-fallback {
-            width: 200px;
-            height: 60px;
-            background: #333;
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 32px;
-            font-weight: bold;
-            border-radius: 8px;
-        }
-        
-        .invoice-title {
-            text-align: right;
-        }
-        
-        .invoice-title h2 {
-            font-size: 20px;
-            color: #8B1538;
-            font-weight: bold;
-            letter-spacing: 1px;
-            margin: 0;
-            text-transform: uppercase;
-            line-height: 1;
-        }
-        
-        /* Compressed Bill To and Invoice Details */
-        .invoice-info {
-            display: flex;
-            justify-content: space-between;
-            margin: 15px 0;
-        }
-        
-        .bill-to {
-            flex: 1;
-            margin-right: 30px;
-        }
-        
-        .bill-to h3 {
-            font-size: 14px;
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 10px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        
-        .bill-to p {
-            font-size: 13px;
-            margin: 3px 0;
-            color: #333;
-            line-height: 1.3;
-        }
-        
-        .invoice-details {
-            text-align: right;
-            flex: 1;
-        }
-        
-        .invoice-details p {
-            font-size: 13px;
-            margin: 3px 0;
-            color: #333;
-            line-height: 1.3;
-        }
-        
-        .invoice-details strong {
-            font-weight: 600;
-        }
-        
-        /* Compressed Burgundy Header Bar */
-        .invoice-header-bar {
-            background: #8B1538;
-            color: white;
-            padding: 12px 15px;
-            margin: 15px 0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-radius: 0;
-        }
-        
-        .header-item {
-            text-align: center;
-            flex: 1;
-        }
-        
-        .header-item h4 {
-            font-size: 12px;
-            margin-bottom: 4px;
-            opacity: 0.9;
-            font-weight: normal;
-        }
-        
-        .header-item p {
-            font-size: 14px;
-            font-weight: bold;
-        }
-        
-        .total-due {
-            text-align: right;
-            flex: 1;
-        }
-        
-        .total-due h4 {
-            font-size: 12px;
-            margin-bottom: 4px;
-            opacity: 0.9;
-            font-weight: normal;
-        }
-        
-        .total-due p {
-            font-size: 16px;
-            font-weight: bold;
-        }
-        
-        /* Items Table with Better Font Sizes */
-        .items-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 20px 0;
-            border: 2px solid #333;
-            background: white;
-        }
-        
-        .items-table th {
-            background: #333;
-            color: white;
-            padding: 12px 8px;
-            text-align: left;
-            font-size: 14px;
-            font-weight: bold;
-            border-right: 1px solid #555;
-        }
-        
-        .items-table th:last-child {
-            border-right: none;
-        }
-        
-        .items-table th.amount-col {
-            text-align: right;
-        }
-        
-        .items-table td {
-            padding: 12px 8px;
-            border-bottom: 1px solid #ddd;
-            border-right: 1px solid #ddd;
-            font-size: 13px;
-            vertical-align: top;
-            line-height: 1.4;
-        }
-        
-        .items-table td:last-child {
-            border-right: none;
-        }
-        
-        .amount-col {
-            text-align: right;
-            font-weight: normal;
-        }
-        
-        .total-row {
-            background: #f8f9fa;
-            font-weight: bold;
-        }
-        
-        .total-row td {
-            padding: 14px 8px;
-            font-size: 15px;
-            border-bottom: 2px solid #333;
-        }
-        
-        .tax-row td {
-            padding: 10px 8px;
-            font-size: 13px;
-            background: #f5f5f5;
-        }
-        
-        /* Better spacing sections with larger fonts */
-        .amount-words {
-            margin: 15px 0;
-            padding: 12px;
-            background: #f0f8ff;
-            border: 1px solid #8B1538;
-            border-radius: 4px;
-            font-size: 13px;
-        }
-        
-        .amount-words strong {
-            color: #8B1538;
-            font-size: 14px;
-        }
-        
-        /* Notes Section */
-        .notes-section {
-            margin: 20px 0;
-            padding: 12px;
-            background: #f8f9fa;
-            border-left: 3px solid #8B1538;
-        }
-        
-        .notes-title {
-            font-weight: bold;
-            font-size: 14px;
-            color: #8B1538;
-            margin-bottom: 6px;
-        }
-        
-        .notes-content {
-            font-size: 13px;
-            color: #333;
-            line-height: 1.4;
-        }
-        
-        /* Footer with better spacing */
-        .footer {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-end;
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #ddd;
-        }
-        
-        .footer-company {
-            flex: 1;
-            font-size: 12px;
-            color: #666;
-            line-height: 1.4;
-            max-width: 200px;
-        }
-        
-        .footer-company strong {
-            color: #333;
-            font-size: 13px;
-        }
-        
-        .signature-section {
-            text-align: center;
-            flex: 1;
-        }
-        
-        .signature-label {
-            font-size: 12px;
-            color: #666;
-            margin-bottom: 15px;
-        }
-        
-        .signatory-name {
-            font-size: 13px;
-            font-weight: bold;
-            border-top: 2px solid #333;
-            padding-top: 6px;
-            display: inline-block;
-            min-width: 150px;
-            color: #333;
-        }
-        
-        /* Payment Details */
-        .payment-details {
-            margin-top: 25px;
-            padding: 20px;
-            border: 2px solid #8B1538;
-            border-radius: 6px;
-            background: #f9f9f9;
-            text-align: center;
-        }
-        
-        .payment-title {
-            font-size: 15px;
-            font-weight: bold;
-            color: #8B1538;
-            margin-bottom: 8px;
-        }
-        
-        .payment-info {
-            font-size: 13px;
-            margin: 4px 0;
-            color: #333;
-        }
-        
-        .payment-value {
-            font-weight: bold;
-            color: #8B1538;
-        }
-        
-        .payment-note {
-            font-size: 11px;
-            color: #666;
-            margin-top: 6px;
-            font-style: italic;
-        }
-        
-        .footer-company {
-            flex: 1;
-            font-size: 9px;
-            color: #666;
-            line-height: 1.3;
-            max-width: 200px;
-        }
-        
-        .footer-company strong {
-            color: #333;
-            font-size: 10px;
-        }
-        
-        .signature-section {
-            text-align: center;
-            flex: 1;
-        }
-        
-        .signature-label {
-            font-size: 10px;
-            color: #666;
-            margin-bottom: 15px;
-        }
-        
-        .seal-container {
-            margin-bottom: 10px;
-            display: flex;
-            justify-content: center;
-        }
-        
-        .seal-image {
-            width: 80px;
-            height: 80px;
-            object-fit: contain;
-        }
-        
-        .seal-fallback {
-            width: 80px;
-            height: 80px;
-            border: 2px solid #333;
-            border-radius: 50%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            background: white;
-        }
-        
-        .seal-text-top {
-            font-size: 8px;
-            font-weight: bold;
-            letter-spacing: 0.5px;
-            margin-bottom: 3px;
-            text-transform: uppercase;
-        }
-        
-        .seal-logo {
-            font-size: 16px;
-            font-weight: bold;
-            margin: 2px 0;
-        }
-        
-        .seal-text-bottom {
-            font-size: 7px;
-            font-weight: bold;
-        }
-        
-        .seal-stars {
-            position: absolute;
-            font-size: 8px;
-        }
-        
-        .seal-star-left {
-            left: 10px;
-            bottom: 15px;
-        }
-        
-        .seal-star-right {
-            right: 10px;
-            bottom: 15px;
-        }
-        
-        .seal-phone {
-            position: absolute;
-            bottom: 5px;
-            font-size: 6px;
-            font-weight: bold;
-        }
-        
-        .signatory-name {
-            font-size: 11px;
-            font-weight: bold;
-            border-top: 2px solid #333;
-            padding-top: 6px;
-            display: inline-block;
-            min-width: 150px;
-            color: #333;
-        }
-        
-        /* Compressed Payment Details */
-        .payment-details {
-            margin-top: 20px;
-            padding: 12px;
-            border: 2px solid #8B1538;
-            border-radius: 6px;
-            background: #f9f9f9;
-            text-align: center;
-        }
-        
-        .payment-title {
-            font-size: 13px;
-            font-weight: bold;
-            color: #8B1538;
-            margin-bottom: 8px;
-        }
-        
-        .payment-info {
-            font-size: 11px;
-            margin: 4px 0;
-            color: #333;
-        }
-        
-        .payment-value {
-            font-weight: bold;
-            color: #8B1538;
-        }
-        
-        .payment-note {
-            font-size: 9px;
-            color: #666;
-            margin-top: 6px;
-            font-style: italic;
-        }
-        
+        @page { margin: 0.3in; size: A4; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.2; color: #333333; background: white; font-size: 11px; }
+        .invoice-container { max-width: 210mm; margin: 0 auto; padding: 15px; background: white; min-height: 297mm; }
+        .header { padding: 10px 0 45px 0; margin-bottom: 30px; border-bottom: 2px solid #eee; min-height: 140px; }
+        .header-content { display: flex; justify-content: space-between; align-items: flex-start; height: 90px; }
+        .company-info { flex: 1; max-width: 500px; }
+        .company-info h3 { font-size: 16px; font-weight: bold; color: #222; margin-bottom: 6px; line-height: 1.1; }
+        .company-tagline { font-size: 14px; font-style: italic; color: #555; margin-bottom: 8px; line-height: 1.3; }
+        .company-address { font-size: 12px; color: #666; line-height: 1.4; }
+        .logo-and-title { display: flex; flex-direction: column; align-items: center; gap: 5px; flex-shrink: 0; margin-top: -10px; }
+        .logo-section { text-align: center; }
+        .logo-image { width: 200px; height: 60px; object-fit: cover; object-position: center; border-radius: 8px; }
+        .logo-fallback { width: 200px; height: 60px; background: #333; color: white; display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: bold; border-radius: 8px; }
+        .invoice-title { text-align: right; }
+        .invoice-title h1 { font-size: 20px; color: #8B1538; font-weight: bold; letter-spacing: 1px; margin: 0; text-transform: uppercase; line-height: 1; }
+        .invoice-info { display: flex; justify-content: space-between; margin: 15px 0; }
+        .bill-to { flex: 1; margin-right: 30px; }
+        .bill-to h3 { font-size: 14px; font-weight: bold; color: #333; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .bill-to p { font-size: 13px; margin: 3px 0; color: #333; line-height: 1.3; }
+        .invoice-header-bar { background: #8B1538; color: white; padding: 12px 15px; margin: 15px 0; display: flex; justify-content: space-between; align-items: center; border-radius: 0; }
+        .header-item { text-align: center; flex: 1; }
+        .header-item h4 { font-size: 12px; margin-bottom: 4px; opacity: 0.9; font-weight: normal; }
+        .header-item p { font-size: 14px; font-weight: bold; }
+        .total-due { text-align: right; flex: 1; }
+        .total-due h4 { font-size: 12px; margin-bottom: 4px; opacity: 0.9; font-weight: normal; }
+        .total-due p { font-size: 16px; font-weight: bold; }
+        .items-table { width: 100%; border-collapse: collapse; margin: 20px 0; border: 2px solid #333; background: white; }
+        .items-table th { background: #333; color: white; padding: 12px 8px; text-align: left; font-size: 14px; font-weight: bold; border-right: 1px solid #555; }
+        .items-table th:last-child { border-right: none; }
+        .items-table th.amount-col { text-align: right; }
+        .items-table td { padding: 12px 8px; border-bottom: 1px solid #ddd; border-right: 1px solid #ddd; font-size: 13px; vertical-align: top; line-height: 1.4; }
+        .items-table td:last-child { border-right: none; }
+        .amount-col { text-align: right; font-weight: normal; }
+        .total-row { background: #f8f9fa; font-weight: bold; }
+        .total-row td { padding: 14px 8px; font-size: 15px; border-bottom: 2px solid #333; }
+        .tax-row td { padding: 10px 8px; font-size: 13px; background: #f5f5f5; }
+        .amount-words { margin: 15px 0; padding: 12px; background: #f0f8ff; border: 1px solid #8B1538; border-radius: 4px; font-size: 13px; }
+        .amount-words strong { color: #8B1538; font-size: 14px; }
+        .notes-section { margin: 20px 0; padding: 12px; background: #f8f9fa; border-left: 3px solid #8B1538; }
+        .notes-title { font-weight: bold; font-size: 14px; color: #8B1538; margin-bottom: 6px; }
+        .notes-content { font-size: 13px; color: #333; line-height: 1.4; }
+        .footer { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; }
+        .footer-company { flex: 1; font-size: 9px; color: #666; line-height: 1.3; max-width: 200px; }
+        .footer-company strong { color: #333; font-size: 10px; }
+        .signature-section { text-align: center; flex: 1; }
+        .signature-label { font-size: 10px; color: #666; margin-bottom: 15px; }
+        .seal-container { margin-bottom: 10px; display: flex; justify-content: center; }
+        .seal-image { width: 80px; height: 80px; object-fit: contain; }
+        .seal-fallback { width: 80px; height: 80px; border: 2px solid #333; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; background: white; }
+        .seal-text-top { font-size: 8px; font-weight: bold; letter-spacing: 0.5px; margin-bottom: 3px; text-transform: uppercase; }
+        .seal-logo { font-size: 16px; font-weight: bold; margin: 2px 0; }
+        .seal-text-bottom { font-size: 7px; font-weight: bold; }
+        .seal-stars { position: absolute; font-size: 8px; }
+        .seal-star-left { left: 10px; bottom: 15px; }
+        .seal-star-right { right: 10px; bottom: 15px; }
+        .seal-phone { position: absolute; bottom: 5px; font-size: 6px; font-weight: bold; }
+        .signatory-name { font-size: 11px; font-weight: bold; border-top: 2px solid #333; padding-top: 6px; display: inline-block; min-width: 150px; color: #333; }
+        .payment-details { margin-top: 20px; padding: 12px; border: 2px solid #8B1538; border-radius: 6px; background: #f9f9f9; text-align: center; }
+        .payment-title { font-size: 13px; font-weight: bold; color: #8B1538; margin-bottom: 8px; }
+        .payment-info { font-size: 11px; margin: 4px 0; color: #333; }
+        .payment-value { font-weight: bold; color: #8B1538; }
+        .payment-note { font-size: 9px; color: #666; margin-top: 6px; font-style: italic; }
         @media print {
-            body {
-                margin: 0;
-                padding: 0;
-                font-size: 10px;
-            }
-            
-            .invoice-container {
-                max-width: none;
-                padding: 10px;
-                margin: 0;
-            }
-            
-            .payment-details {
-                page-break-inside: avoid;
-                margin-top: 15px;
-            }
-            
-            .footer {
-                page-break-inside: avoid;
-            }
-            
-            .invoice-header-bar {
-                -webkit-print-color-adjust: exact;
-                color-adjust: exact;
-            }
-            
-            .items-table th {
-                -webkit-print-color-adjust: exact;
-                color-adjust: exact;
-            }
+            body { margin: 0; padding: 0; font-size: 10px; }
+            .invoice-container { max-width: none; padding: 10px; margin: 0; }
+            .payment-details { page-break-inside: avoid; margin-top: 15px; }
+            .footer { page-break-inside: avoid; }
+            .invoice-header-bar { -webkit-print-color-adjust: exact; color-adjust: exact; }
+            .items-table th { -webkit-print-color-adjust: exact; color-adjust: exact; }
         }
     </style>
 </head>
 <body>
     <div class="invoice-container">
-        <!-- Header Section -->
         <div class="header">
             <div class="header-content">
                 <div class="company-info">
@@ -964,7 +507,6 @@ const updateItem = (index: number, field: keyof InvoiceItem, value: string | num
             </div>
         </div>
 
-        <!-- Bill To and Invoice Details -->
         <div class="invoice-info">
             <div class="bill-to">
                 <h3>BILL TO</h3>
@@ -976,7 +518,6 @@ const updateItem = (index: number, field: keyof InvoiceItem, value: string | num
             </div>
         </div>
 
-        <!-- Burgundy Header Bar -->
         <div class="invoice-header-bar">
             <div class="header-item">
                 <h4>Invoice No.:</h4>
@@ -988,7 +529,7 @@ const updateItem = (index: number, field: keyof InvoiceItem, value: string | num
             </div>
             <div class="header-item">
                 <h4>Due date:</h4>
-                <p>${new Date(invoice.dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                <p>${invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Not Set'}</p>
             </div>
             <div class="total-due">
                 <h4>Total due</h4>
@@ -996,7 +537,6 @@ const updateItem = (index: number, field: keyof InvoiceItem, value: string | num
             </div>
         </div>
 
-        <!-- Items Table -->
         <table class="items-table">
             <thead>
                 <tr>
@@ -1034,13 +574,11 @@ const updateItem = (index: number, field: keyof InvoiceItem, value: string | num
             </tbody>
         </table>
 
-        <!-- Amount in Words -->
         <div class="amount-words">
             <strong>Amount in Words:</strong> 
             <span style="font-style: italic; color: #333;">${amountInWords}</span>
         </div>
 
-        <!-- Notes Section -->
         ${invoice.notes ? `
             <div class="notes-section">
                 <div class="notes-title">Notes:</div>
@@ -1048,7 +586,6 @@ const updateItem = (index: number, field: keyof InvoiceItem, value: string | num
             </div>
         ` : ''}
 
-        <!-- Footer -->
         <div class="footer">
             <div class="footer-company">
                 <strong>${invoice.billFrom.name}</strong><br>
@@ -1074,7 +611,6 @@ const updateItem = (index: number, field: keyof InvoiceItem, value: string | num
             </div>
         </div>
 
-        <!-- Payment Details -->
         <div class="payment-details">
             <div class="payment-title">💳 PAYMENT DETAILS</div>
             <div class="payment-info">
@@ -1103,26 +639,63 @@ const updateItem = (index: number, field: keyof InvoiceItem, value: string | num
     printWindow.document.close();
   };
 
+  // Authentication Loading Screen
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Authentication Redirect Screen
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600">Redirecting to login...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Main Application UI
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-6xl mx-auto">
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+          
+          {/* Header with Logout */}
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-3xl font-bold text-gray-900">Invoice Generator</h1>
-            <button
-              onClick={() => {
-                resetForm();
-                setShowForm(true);
-                setEditingId(null);
-              }}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
-            >
-              <Plus size={20} />
-              New Invoice
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  document.cookie = 'invoice-auth=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+                  window.location.reload();
+                }}
+                className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
+              >
+                Logout
+              </button>
+              <button
+                onClick={() => {
+                  resetForm();
+                  setShowForm(true);
+                  setEditingId(null);
+                }}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
+              >
+                <Plus size={20} />
+                New Invoice
+              </button>
+            </div>
           </div>
 
-          {/* Custom Units Management */}
+          {/* Custom Units Management (only when form is shown) */}
           {showForm && (
             <div className="mb-6 p-4 bg-gray-50 rounded-lg">
               <h3 className="text-lg font-semibold text-gray-900 mb-3">Manage Quantity Units</h3>
@@ -1168,94 +741,95 @@ const updateItem = (index: number, field: keyof InvoiceItem, value: string | num
             </div>
           )}
 
-          {/* Enhanced Invoice List Header */}
+          {/* Invoice List (only when form is NOT shown) */}
           {!showForm && (
-            <div className="mb-4 flex justify-between items-center">
-              <div>
-                <h2 className="text-xl font-semibold text-gray-900">All Invoices</h2>
-                <p className="text-sm text-gray-600">
-                  Total: {invoices.length} invoice(s) | 
-                  Clients: {predefinedClients.length} saved
-                </p>
+            <>
+              <div className="mb-4 flex justify-between items-center">
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">All Invoices</h2>
+                  <p className="text-sm text-gray-600">
+                    Total: {invoices.length} invoice(s) | 
+                    Clients: {predefinedClients.length} saved
+                  </p>
+                </div>
               </div>
-            </div>
-          )}
-          {!showForm && (
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse border border-gray-300">
-                <thead>
-                  <tr className="bg-gray-100">
-                    <th className="border border-gray-300 p-3 text-left">Invoice #</th>
-                    <th className="border border-gray-300 p-3 text-left">Client Details</th>
-                    <th className="border border-gray-300 p-3 text-left">Date</th>
-                    <th className="border border-gray-300 p-3 text-left">Due Date</th>
-                    <th className="border border-gray-300 p-3 text-left">Total</th>
-                    <th className="border border-gray-300 p-3 text-left">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {invoices.map(invoice => {
-                    const subtotal = invoice.items.reduce((sum, item) => sum + parseFloat(item.amount.toString() || '0'), 0);
-                    const tax = (subtotal * parseFloat(invoice.tax.toString() || '0')) / 100;
-                    const discount = parseFloat(invoice.discount.toString() || '0');
-                    const total = (subtotal + tax - discount).toFixed(2);
-                    
-                    return (
-                      <tr key={invoice.id} className="hover:bg-gray-50">
-                        <td className="border border-gray-300 p-3">{invoice.invoiceNumber}</td>
-                        <td className="border border-gray-300 p-3">
-                          <div className="font-medium">{invoice.billTo.name}</div>
-                          {invoice.billTo.company && (
-                            <div className="text-sm text-gray-600">{invoice.billTo.company}</div>
-                          )}
-                          {invoice.billTo.phone && (
-                            <div className="text-sm text-gray-500">{invoice.billTo.phone}</div>
-                          )}
-                        </td>
-                        <td className="border border-gray-300 p-3">{invoice.date}</td>
-                        <td className="border border-gray-300 p-3">{invoice.dueDate}</td>
-                        <td className="border border-gray-300 p-3">₹{parseFloat(total).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                        <td className="border border-gray-300 p-3">
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => generatePDF(invoice)}
-                              className="text-blue-600 hover:text-blue-800"
-                              title="Download PDF"
-                            >
-                              <Download size={16} />
-                            </button>
-                            <button
-                              onClick={() => editInvoice(invoice)}
-                              className="text-green-600 hover:text-green-800"
-                              title="Edit"
-                            >
-                              <Edit3 size={16} />
-                            </button>
-                            <button
-                              onClick={() => deleteInvoice(invoice.id as number)}
-                              className="text-red-600 hover:text-red-800"
-                              title="Delete"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
+              
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse border border-gray-300">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th className="border border-gray-300 p-3 text-left">Invoice #</th>
+                      <th className="border border-gray-300 p-3 text-left">Client Details</th>
+                      <th className="border border-gray-300 p-3 text-left">Date</th>
+                      <th className="border border-gray-300 p-3 text-left">Due Date</th>
+                      <th className="border border-gray-300 p-3 text-left">Total</th>
+                      <th className="border border-gray-300 p-3 text-left">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {invoices.map(invoice => {
+                      const subtotal = invoice.items.reduce((sum, item) => sum + parseFloat(item.amount.toString() || '0'), 0);
+                      const tax = (subtotal * parseFloat(invoice.tax.toString() || '0')) / 100;
+                      const discount = parseFloat(invoice.discount.toString() || '0');
+                      const total = (subtotal + tax - discount).toFixed(2);
+                      
+                      return (
+                        <tr key={invoice.id} className="hover:bg-gray-50">
+                          <td className="border border-gray-300 p-3">{invoice.invoiceNumber}</td>
+                          <td className="border border-gray-300 p-3">
+                            <div className="font-medium">{invoice.billTo.name}</div>
+                            {invoice.billTo.company && (
+                              <div className="text-sm text-gray-600">{invoice.billTo.company}</div>
+                            )}
+                            {invoice.billTo.phone && (
+                              <div className="text-sm text-gray-500">{invoice.billTo.phone}</div>
+                            )}
+                          </td>
+                          <td className="border border-gray-300 p-3">{invoice.date}</td>
+                          <td className="border border-gray-300 p-3">{invoice.dueDate}</td>
+                          <td className="border border-gray-300 p-3">₹{parseFloat(total).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                          <td className="border border-gray-300 p-3">
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => generatePDF(invoice)}
+                                className="text-blue-600 hover:text-blue-800"
+                                title="Download PDF"
+                              >
+                                <Download size={16} />
+                              </button>
+                              <button
+                                onClick={() => editInvoice(invoice)}
+                                className="text-green-600 hover:text-green-800"
+                                title="Edit"
+                              >
+                                <Edit3 size={16} />
+                              </button>
+                              <button
+                                onClick={() => deleteInvoice(invoice.id as number)}
+                                className="text-red-600 hover:text-red-800"
+                                title="Delete"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {invoices.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="border border-gray-300 p-8 text-center text-gray-500">
+                          No invoices yet. Click "New Invoice" to create your first professional invoice.
                         </td>
                       </tr>
-                    );
-                  })}
-                  {invoices.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="border border-gray-300 p-8 text-center text-gray-500">
-                        No invoices yet. Click "New Invoice" to create your first professional invoice.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
 
-          {/* Invoice Form */}
+          {/* Invoice Form (only when form is shown) */}
           {showForm && (
             <div className="space-y-6">
               <div className="flex justify-between items-center">
