@@ -425,7 +425,7 @@ const updateItem = (index: number, field: keyof InvoiceItem, value: string | num
         }
 
         .company-info h4 {
-            font-size: 18px;
+            font-size: 16px;
             font-weight: bold;
             color: #222;
             margin-bottom: 6px;
@@ -944,7 +944,7 @@ const updateItem = (index: number, field: keyof InvoiceItem, value: string | num
         <div class="header">
             <div class="header-content">
                 <div class="company-info">
-                    <h1>${invoice.billFrom.name}<span class="trademark">™</span></h1>
+                    <h3>${invoice.billFrom.name}</h3>
                     <div class="company-tagline">Interiors that Reflects You</div>
                     <div class="company-address">
                         ${invoice.billFrom.address}, ${invoice.billFrom.city}, ${invoice.billFrom.state}<br>
