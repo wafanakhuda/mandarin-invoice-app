@@ -175,24 +175,31 @@ export default function InvoiceGenerator() {
     }));
   };
 
-  const updateItem = (index: number, field: keyof InvoiceItem, value: string | number) => {
-    const newItems = [...currentInvoice.items];
-    if (field === 'description' || field === 'unit') {
-      (newItems[index] as Record<string, unknown>)[field] = value;
-    } else {
-      (newItems[index] as Record<string, unknown>)[field] = value;
-    }
-    
-    if (field === 'quantity' || field === 'rate') {
-      newItems[index].amount = parseFloat(calculateItemAmount(
-        newItems[index].quantity,
-        newItems[index].rate
-      ));
-    }
-    
-    setCurrentInvoice(prev => ({ ...prev, items: newItems }));
-  };
-
+const updateItem = (index: number, field: keyof InvoiceItem, value: string | number) => {
+  const newItems = [...currentInvoice.items];
+  
+  // Type-safe field updates
+  if (field === 'description') {
+    newItems[index].description = value as string;           // ✅ Direct assignment
+  } else if (field === 'unit') {
+    newItems[index].unit = value as string;                  // ✅ Direct assignment
+  } else if (field === 'quantity') {
+    newItems[index].quantity = value as number;              // ✅ Direct assignment
+  } else if (field === 'rate') {
+    newItems[index].rate = value as number;                  // ✅ Direct assignment
+  } else if (field === 'amount') {
+    newItems[index].amount = value as number;                // ✅ Direct assignment
+  }
+  
+  if (field === 'quantity' || field === 'rate') {
+    newItems[index].amount = parseFloat(calculateItemAmount(
+      newItems[index].quantity,
+      newItems[index].rate
+    ));
+  }
+  
+  setCurrentInvoice(prev => ({ ...prev, items: newItems }));
+};
   const removeItem = (index: number) => {
     if (currentInvoice.items.length > 1) {
       setCurrentInvoice(prev => ({
